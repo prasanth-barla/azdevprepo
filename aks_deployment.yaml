@@ -1,0 +1,44 @@
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  imageName: aksapp
+  acrName: mynew
+  tag: $(Build.BuildId)
+
+stages:
+
+- stage: Build
+  jobs:
+  - job: BuildPush
+    steps:
+
+    - task: Docker@2
+      displayName: Build and Push Image
+      inputs:
+        containerRegistry: 'test_connection'
+        repository: 'aksapp'
+        command: 'buildAndPush'
+        Dockerfile: '**/Dockerfile'
+        tags: |
+          $(tag)
+
+- stage: Deploy
+  jobs:
+  - job: DeployToAKS
+    steps:
+
+    - task: KubernetesManifest@1
+      displayName: Deploy to AKS
+      inputs:
+        action: deploy
+        kubernetesServiceConnection: 'aks-connection'
+        namespace: default
+        manifests: |
+          deployment.yaml
+          service.yaml
+        containers: |
+          mynew.azurecr.io/aksapp:$(tag)
